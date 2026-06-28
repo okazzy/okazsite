@@ -1,0 +1,472 @@
+/* ============================================================
+   Watch Flow — Premium Video Styles
+   Dark theme with gold accents using globals.css variables
+   ============================================================ */
+
+/* =============================================================
+   1. Page Layout & Header
+   ============================================================= */
+
+.watch-page {
+  padding: var(--space-lg) var(--space-xl);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  min-height: 60vh;
+  animation: watchFadeIn 0.6s ease-out;
+}
+
+@keyframes watchFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.watch-header {
+  margin-bottom: var(--space-2xl);
+  text-align: center;
+}
+
+.watch-header__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-3xl);
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: var(--letter-spacing-wide);
+  margin-bottom: var(--space-sm);
+}
+
+.watch-header__subtitle {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+/* =============================================================
+   2. Category / Subcategory Grid
+   ============================================================= */
+
+.watch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-lg);
+}
+
+.watch-grid-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-base);
+  animation: watchCardReveal 0.5s ease-out both;
+}
+
+.watch-grid-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-primary);
+  border-color: var(--color-primary-dim);
+}
+
+.watch-grid-card:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+@keyframes watchCardReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Staggered animation delay for grid items */
+.watch-grid-card:nth-child(1) { animation-delay: 0.05s; }
+.watch-grid-card:nth-child(2) { animation-delay: 0.1s; }
+.watch-grid-card:nth-child(3) { animation-delay: 0.15s; }
+.watch-grid-card:nth-child(4) { animation-delay: 0.2s; }
+.watch-grid-card:nth-child(5) { animation-delay: 0.25s; }
+.watch-grid-card:nth-child(6) { animation-delay: 0.3s; }
+.watch-grid-card:nth-child(7) { animation-delay: 0.35s; }
+.watch-grid-card:nth-child(8) { animation-delay: 0.4s; }
+
+.watch-grid-card__image-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+}
+
+.watch-grid-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-slow);
+}
+
+.watch-grid-card:hover .watch-grid-card__image {
+  transform: scale(1.08);
+}
+
+.watch-grid-card__overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--gradient-card-overlay);
+  display: flex;
+  align-items: flex-end;
+  padding: var(--space-lg);
+}
+
+.watch-grid-card__title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  letter-spacing: var(--letter-spacing-wide);
+  line-height: var(--line-height-tight);
+}
+
+[dir='rtl'] .watch-grid-card__title {
+  font-family: var(--font-arabic);
+  letter-spacing: 0;
+}
+
+.watch-grid-card a {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+/* =============================================================
+   3. Video Cards (for video listing page)
+   ============================================================= */
+
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-lg);
+}
+
+.video-card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  transition:
+    transform var(--transition-base),
+    box-shadow var(--transition-base),
+    border-color var(--transition-base);
+  animation: watchCardReveal 0.5s ease-out both;
+}
+
+.video-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow-primary);
+  border-color: rgba(212, 175, 55, 0.25);
+}
+
+.video-card:active {
+  transform: translateY(-1px);
+}
+
+/* ---- Thumbnail ---- */
+
+.video-card__thumbnail-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--color-surface-elevated);
+}
+
+.video-card__thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform var(--transition-slow);
+}
+
+.video-card:hover .video-card__thumbnail {
+  transform: scale(1.06);
+}
+
+/* ---- Play Overlay ---- */
+
+.video-card__play-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transition: opacity var(--transition-base);
+}
+
+.video-card:hover .video-card__play-overlay {
+  opacity: 1;
+}
+
+.video-card__play-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: var(--gradient-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-md), var(--shadow-glow-primary);
+  transition: transform var(--transition-bounce);
+}
+
+.video-card:hover .video-card__play-btn {
+  transform: scale(1.1);
+}
+
+.video-card__play-btn svg {
+  width: 24px;
+  height: 24px;
+  fill: var(--color-text-inverse);
+  margin-inline-start: 3px;
+}
+
+/* ---- Badges ---- */
+
+.video-card__badges {
+  position: absolute;
+  top: var(--space-sm);
+  inset-inline-end: var(--space-sm);
+  display: flex;
+  gap: var(--space-xs);
+  z-index: var(--z-base);
+}
+
+.video-card__badge {
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  line-height: 1.4;
+}
+
+.video-card__badge--practice {
+  background: var(--color-accent-dim);
+  color: var(--color-accent-hover);
+  border: 1px solid rgba(157, 101, 201, 0.3);
+}
+
+.video-card__badge--premium {
+  background: var(--color-primary-dim);
+  color: var(--color-primary-hover);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+/* ---- Card Body ---- */
+
+.video-card__body {
+  padding: var(--space-md) var(--space-lg);
+}
+
+.video-card__title {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-xs);
+  line-height: var(--line-height-tight);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.video-card__description {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+
+/* =============================================================
+   5. Empty State
+   ============================================================= */
+
+.watch-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  gap: var(--space-md);
+  animation: watchFadeIn 0.5s ease-out;
+}
+
+.watch-empty__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--space-sm);
+}
+
+.watch-empty__icon svg {
+  width: 32px;
+  height: 32px;
+  stroke: var(--color-primary);
+}
+
+.watch-empty__text {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-md);
+  text-align: center;
+}
+
+/* =============================================================
+   6. Breadcrumb Navigation
+   ============================================================= */
+
+.watch-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xl);
+  flex-wrap: wrap;
+}
+
+.watch-breadcrumb a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  transition: color var(--transition-fast);
+}
+
+.watch-breadcrumb a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.watch-breadcrumb__separator {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+}
+
+[dir='rtl'] .watch-breadcrumb__separator {
+  transform: scaleX(-1);
+}
+
+.watch-breadcrumb__current {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* =============================================================
+   7. Responsive Design
+   ============================================================= */
+
+@media (max-width: 1200px) {
+  .watch-grid {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+  .video-grid {
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .watch-page {
+    padding: var(--space-md) var(--space-md);
+  }
+
+  .watch-header__title {
+    font-size: var(--font-size-2xl);
+  }
+
+  .watch-header__subtitle {
+    font-size: var(--font-size-base);
+  }
+
+  .watch-grid {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--space-md);
+  }
+
+  .video-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+
+  .video-card__play-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .video-card__play-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .watch-page {
+    padding: var(--space-sm) var(--space-sm);
+  }
+
+  .watch-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--space-sm);
+  }
+
+  .watch-grid-card__overlay {
+    padding: var(--space-sm);
+  }
+
+  .watch-grid-card__title {
+    font-size: var(--font-size-sm);
+  }
+
+  .video-card__body {
+    padding: var(--space-sm) var(--space-md);
+  }
+}
+
+/* =============================================================
+   8. Scrollbar
+   ============================================================= */
+
+.watch-page::-webkit-scrollbar {
+  width: 6px;
+}
+
+.watch-page::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.watch-page::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
