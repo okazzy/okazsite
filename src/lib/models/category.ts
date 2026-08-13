@@ -13,12 +13,20 @@ export interface SubcategoryModel {
 }
 
 export function getLocalizedText(
-  field: Record<string, string> | undefined,
+  field: any,
   langCode: string
 ): string {
   if (!field) return '';
-  if (field[langCode] && field[langCode].trim() !== '') {
-    return field[langCode];
+  // If the user accidentally saved a plain string instead of a map
+  if (typeof field === 'string') return field;
+
+  const val = field[langCode];
+  if (typeof val === 'string' && val.trim() !== '') {
+    return val;
   }
-  return field['en'] || '';
+  
+  const enVal = field['en'];
+  if (typeof enVal === 'string') return enVal;
+  
+  return '';
 }

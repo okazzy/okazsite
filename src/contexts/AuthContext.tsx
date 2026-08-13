@@ -1,12 +1,13 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { initAppCheck } from '@/lib/firebase/appcheck';
-import { getUserData } from '@/lib/firebase/firestore';
+import { getUserData, getGuestLimit, incrementDailyPlays } from '@/lib/firebase/firestore';
 import { signInAnonymously as firebaseSignInAnonymously } from '@/lib/firebase/auth';
 import type { UserModel } from '@/lib/models';
+import PaywallModal from '@/components/modals/PaywallModal';
 
 interface AuthContextType {
   firebaseUser: User | null;
@@ -15,6 +16,9 @@ interface AuthContextType {
   isGuest: boolean;
   isAuthenticated: boolean;
   refreshUserData: () => Promise<void>;
+  showPaywall: boolean;
+  setShowPaywall: (show: boolean) => void;
+  checkGuestLimit: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,16 +28,22 @@ const AuthContext = createContext<AuthContextType>({
   isGuest: true,
   isAuthenticated: false,
   refreshUserData: async () => {},
+  showPaywall: false,
+  setShowPaywall: () => {},
+  checkGuestLimit: () => true,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [userData, setUserData] = useState<UserModel | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [guestLimit, setGuestLimit] = useState(3);
 
-  // Initialize App Check on mount
+  // Initialize App Check and fetch guest limit on mount
   useEffect(() => {
     initAppCheck();
+    getGuestLimit().then(setGuestLimit).catch(console.error);
   }, []);
 
   // Listen to Firebase auth state
@@ -79,6 +89,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isGuest = !firebaseUser || firebaseUser.isAnonymous;
   const isAuthenticated = !!firebaseUser && !firebaseUser.isAnonymous;
 
+  const checkGuestLimit = useCallback((): boolean => {
+    if (isAuthenticated) return true;
+
+    // Default to 0 plays if userData is null (e.g., fresh guest)
+    const plays = userData ? userData.dailyPlays : 0;
+    
+    if (plays >= guestLimit) {
+      setShowPaywall(true);
+      return false;
+    }
+    
+    // Allowed: increment in the background so it doesn't block playback immediately
+    if (firebaseUser) {
+      incrementDailyPlays(firebaseUser.uid)
+        .then(() => refreshUserData())
+        .catch(console.error);
+    }
+    return true;
+  }, [isAuthenticated, userData, guestLimit, firebaseUser]);
+
   return (
     <AuthContext.Provider
       value={{
@@ -88,9 +118,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isGuest,
         isAuthenticated,
         refreshUserData,
+        showPaywall,
+        setShowPaywall,
+        checkGuestLimit,
       }}
     >
       {children}
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
     </AuthContext.Provider>
   );
 }

@@ -136,9 +136,21 @@ export default function SettingsPage() {
         <div className="settings-download-card glass-card">
           <h3 className="settings-download-title">{t('downloadAppTitle')}</h3>
           <p className="settings-download-desc">{t('downloadAppDesc')}</p>
-          <a href="https://apps.apple.com/app/okaz/id6780990007" target="_blank" rel="noopener noreferrer" className="btn-primary">
-            {t('downloadApp')}
-          </a>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: 'var(--space-md)' }}>
+            <a href="https://apps.apple.com/app/okaz/id6780990007" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 1.44C11 6.44 9.22 5 7 5a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z" />
+                <path d="M10 2c1 .5 2 2 2 3.5-1.5.5-3-1.5-3-3.5Z" />
+              </svg>
+              App Store
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.okaz.awakening" target="_blank" rel="noopener noreferrer" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Google Play
+            </a>
+          </div>
         </div>
       </section>
 

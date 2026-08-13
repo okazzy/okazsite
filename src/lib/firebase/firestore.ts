@@ -11,6 +11,9 @@ import {
   arrayUnion,
   arrayRemove,
   Timestamp,
+  where,
+  limit,
+  setDoc,
 } from 'firebase/firestore';
 import type {
   CategoryModel,
@@ -214,13 +217,20 @@ export async function getRandomFeaturedVideos(
   const categories = await getVideoCategories();
   const allVideos: VideoModel[] = [];
 
-  for (const cat of categories) {
-    const subs = await getVideoSubcategories(cat.id);
-    for (const sub of subs) {
-      const videos = await getVideos(cat.id, sub.id);
-      allVideos.push(...videos);
-    }
-  }
+  // Fetch all subcategories in parallel
+  const subPromises = categories.map(cat => getVideoSubcategories(cat.id));
+  const subResults = await Promise.all(subPromises);
+
+  // Fetch all videos in parallel
+  const videoPromises: Promise<VideoModel[]>[] = [];
+  categories.forEach((cat, i) => {
+    subResults[i].forEach(sub => {
+      videoPromises.push(getVideos(cat.id, sub.id));
+    });
+  });
+
+  const videoResults = await Promise.all(videoPromises);
+  allVideos.push(...videoResults.flat());
 
   return pickRandom(allVideos, count);
 }
@@ -230,13 +240,12 @@ export async function getCategoryHighlightTracks(
   count: number
 ): Promise<TrackModel[]> {
   const subs = await getSubcategories(categoryId);
-  const allTracks: TrackModel[] = [];
-
-  for (const sub of subs) {
-    const tracks = await getTracks(categoryId, sub.id);
-    allTracks.push(...tracks);
-  }
-
+  
+  // Fetch all tracks in parallel
+  const trackPromises = subs.map(sub => getTracks(categoryId, sub.id));
+  const trackResults = await Promise.all(trackPromises);
+  
+  const allTracks = trackResults.flat();
   return pickRandom(allTracks, count);
 }
 
@@ -403,36 +412,76 @@ export async function incrementDailyPlays(uid: string): Promise<number> {
   const userRef = doc(db, 'users', uid);
   const snap = await getDoc(userRef);
 
-  if (!snap.exists()) return 0;
+  let currentPlays = 0;
 
-  const data = snap.data();
-  const lastPlayed = data.lastPlayedDate as Timestamp | undefined;
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (snap.exists()) {
+    const data = snap.data();
+    const lastPlayed = data.lastPlayedDate as Timestamp | undefined;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  let currentPlays = (data.dailyPlays as number) ?? 0;
+    currentPlays = (data.dailyPlays as number) ?? 0;
 
-  // Reset count if last played date is a different day
-  if (lastPlayed) {
-    const lastDate = lastPlayed.toDate();
-    const lastDay = new Date(
-      lastDate.getFullYear(),
-      lastDate.getMonth(),
-      lastDate.getDate()
-    );
-    if (lastDay.getTime() < today.getTime()) {
-      currentPlays = 0;
+    // Reset count if last played date is a different day
+    if (lastPlayed) {
+      const lastDate = lastPlayed.toDate();
+      const lastDay = new Date(
+        lastDate.getFullYear(),
+        lastDate.getMonth(),
+        lastDate.getDate()
+      );
+      if (lastDay.getTime() < today.getTime()) {
+        currentPlays = 0;
+      }
     }
-  } else {
-    currentPlays = 0;
   }
 
   const newPlays = currentPlays + 1;
 
-  await updateDoc(userRef, {
+  await setDoc(userRef, {
+    uid,
+    isGuest: true,
     dailyPlays: newPlays,
     lastPlayedDate: Timestamp.now(),
-  });
+  }, { merge: true });
 
   return newPlays;
+}
+
+// =======================
+// BLOG FUNCTIONS
+// =======================
+
+import type { BlogPostModel } from '../models';
+
+export async function getBlogPosts(): Promise<BlogPostModel[]> {
+  const blogsRef = collection(db, 'blogs');
+  // Avoid orderBy to prevent Firestore requiring a composite index, we sort in memory instead
+  const q = query(blogsRef, where('status', '==', 'publish'));
+  
+  const snap = await getDocs(q);
+  const posts = snap.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  })) as BlogPostModel[];
+  
+  // Sort descending by publishedAt
+  return posts.sort((a, b) => b.publishedAt - a.publishedAt);
+}
+
+export async function getBlogPostBySlug(slug: string): Promise<BlogPostModel | null> {
+  const posts = await getBlogPosts();
+  let decodedSlug = slug;
+  try { decodedSlug = decodeURIComponent(slug); } catch {}
+  
+  return posts.find(p => {
+    let pDecoded = p.slug;
+    try { pDecoded = decodeURIComponent(p.slug); } catch {}
+    return pDecoded === decodedSlug || p.slug === slug;
+  }) || null;
+}
+
+export async function saveBlogPost(post: BlogPostModel): Promise<void> {
+  const docRef = doc(db, 'blogs', post.id);
+  await setDoc(docRef, post, { merge: true });
 }

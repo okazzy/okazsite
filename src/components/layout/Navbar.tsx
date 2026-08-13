@@ -84,6 +84,16 @@ const MailIcon = () => (
   </svg>
 );
 
+const DocumentIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+
 interface NavItem {
   href: string;
   label: string;
@@ -111,6 +121,7 @@ export default function Navbar({ locale }: { locale: string }) {
     { href: '/', label: t('navHome'), icon: HomeIcon },
     { href: '/listen', label: t('navListen'), icon: HeadphonesIcon },
     { href: '/watch', label: t('navWatch'), icon: VideoIcon },
+    { href: '/blog', label: t('navBlog'), icon: DocumentIcon },
     { href: '/favorites', label: t('navFavourites'), icon: HeartIcon },
     { href: '/contact', label: t('titleLetsConnect'), icon: MailIcon },
     { href: '/settings', label: t('navSettings'), icon: SettingsIcon },
@@ -147,8 +158,25 @@ export default function Navbar({ locale }: { locale: string }) {
         <Link href="/search" className="navbar-btn" aria-label={t('navSearch')}>
           <SearchIcon />
         </Link>
-        <button className="navbar-btn" onClick={toggleLocale} aria-label={t('titleLanguage')}>
+        <button className="navbar-btn lang-btn" onClick={toggleLocale} aria-label={t('titleLanguage')} style={{ position: 'relative' }}>
           <GlobeIcon />
+          <span style={{ 
+            position: 'absolute', 
+            bottom: '0px', 
+            right: '-2px', 
+            fontSize: locale === 'ar' ? '9px' : '10px', 
+            fontWeight: 800, 
+            background: 'var(--color-surface)',
+            color: 'var(--color-text-primary)', 
+            padding: '1px 4px', 
+            borderRadius: '4px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            border: '1px solid var(--color-border)',
+            lineHeight: 1,
+            letterSpacing: locale === 'ar' ? '0.5px' : '0'
+          }}>
+            {locale === 'ar' ? 'EN' : 'عربي'}
+          </span>
         </button>
         {isAuthenticated ? (
           <Link href="/settings" className="navbar-avatar">

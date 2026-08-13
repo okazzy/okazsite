@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">
+  <g fill="none" stroke="#ffffff" stroke-width="1.2">
+    <!-- Star center -->
+    <path d="M30 15 L35 25 L45 30 L35 35 L30 45 L25 35 L15 30 L25 25 Z" />
+    <!-- Outer octagons -->
+    <path d="M0 15 L15 0 L45 0 L60 15 L60 45 L45 60 L15 60 L0 45 Z" />
+    <!-- Connecting lines -->
+    <path d="M15 15 L25 25 M45 15 L35 25 M15 45 L25 35 M45 45 L35 35" />
+    <path d="M0 30 L15 30 M45 30 L60 30 M30 0 L30 15 M30 45 L30 60" />
+  </g>
+</svg>

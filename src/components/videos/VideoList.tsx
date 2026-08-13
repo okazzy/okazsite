@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import type { VideoModel } from '@/lib/models';
 import { getLocalizedText } from '@/lib/models';
 import FavoriteButton from '@/components/ui/FavoriteButton';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface VideoListProps {
   videos: VideoModel[];
@@ -13,6 +14,7 @@ interface VideoListProps {
 
 export default function VideoList({ videos, locale }: VideoListProps) {
   const t = useTranslations();
+  const { checkGuestLimit } = useAuth();
   const [selectedVideo, setSelectedVideo] = useState<VideoModel | null>(null);
 
   // Close modal on Escape key
@@ -52,14 +54,14 @@ export default function VideoList({ videos, locale }: VideoListProps) {
             key={video.videoId}
             className="video-card"
             style={{ animationDelay: `${index * 0.06}s` }}
-            onClick={() => setSelectedVideo(video)}
+            onClick={() => { if (checkGuestLimit()) setSelectedVideo(video); }}
             role="button"
             tabIndex={0}
             aria-label={`${t('btnPlay')} ${getLocalizedText(video.title, locale)}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                setSelectedVideo(video);
+                if (checkGuestLimit()) setSelectedVideo(video);
               }
             }}
           >

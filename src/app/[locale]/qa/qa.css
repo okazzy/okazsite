@@ -1,0 +1,131 @@
+.qa-page {
+  padding: var(--space-xl) var(--space-md);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.qa-header {
+  margin-bottom: var(--space-2xl);
+  text-align: center;
+}
+
+.qa-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.qa-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.qa-item {
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.qa-item.expanded {
+  border-color: rgba(233, 30, 99, 0.8);
+  box-shadow: 0 4px 12px rgba(233, 30, 99, 0.08);
+}
+
+.qa-item-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-lg);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: right;
+  color: var(--text-primary);
+}
+
+html[dir='ltr'] .qa-item-header {
+  text-align: left;
+}
+
+.qa-question {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  transition: color 0.3s ease;
+}
+
+.qa-item.expanded .qa-question {
+  color: var(--primary-color);
+}
+
+.qa-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.qa-item.expanded .qa-icon {
+  transform: rotate(180deg);
+  color: var(--primary-color);
+}
+
+.qa-item-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.3s ease;
+}
+
+.qa-item.expanded .qa-item-body {
+  grid-template-rows: 1fr;
+}
+
+.qa-item-content {
+  overflow: hidden;
+  padding: 0 var(--space-lg);
+}
+
+.qa-item.expanded .qa-item-content {
+  padding-bottom: var(--space-lg);
+}
+
+.qa-answer {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: var(--space-md);
+}
+
+.qa-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.qa-action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  font-size: 0.85rem;
+  border-color: rgba(233, 30, 99, 0.5);
+  color: var(--primary-color);
+}
+
+.qa-action-btn:hover {
+  background: rgba(233, 30, 99, 0.1);
+}
+
+.qa-action-btn svg {
+  width: 16px;
+  height: 16px;
+}

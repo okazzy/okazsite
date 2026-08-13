@@ -23,8 +23,8 @@ export default function WatchVideosPage() {
   const { loading: authLoading } = useAuth();
   const locale = useLocale();
 
-  const [categoryTitle, setCategoryTitle] = useState(categoryId);
-  const [subcategoryTitle, setSubcategoryTitle] = useState(subcategoryId);
+  const [categoryTitle, setCategoryTitle] = useState('');
+  const [subcategoryTitle, setSubcategoryTitle] = useState('');
   const [videos, setVideos] = useState<VideoModel[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -17,7 +17,7 @@ export default function WatchCategoryPage() {
   const { loading: authLoading } = useAuth();
   const locale = useLocale();
 
-  const [categoryTitle, setCategoryTitle] = useState(categoryId);
+  const [categoryTitle, setCategoryTitle] = useState('');
   const [subcategories, setSubcategories] = useState<SubcategoryModel[]>([]);
   const [loading, setLoading] = useState(true);
 

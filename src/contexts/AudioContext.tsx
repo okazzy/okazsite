@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useRef, useCallback, ReactNode, useEffect } from 'react';
 import type { TrackModel } from '@/lib/models';
 import { getLocalizedText } from '@/lib/models';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AudioState {
   currentTrack: TrackModel | null;
@@ -37,6 +38,7 @@ interface AudioContextType extends AudioState {
 const AudioContext = createContext<AudioContextType | null>(null);
 
 export function AudioProvider({ children }: { children: ReactNode }) {
+  const { checkGuestLimit } = useAuth();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [state, setState] = useState<AudioState>({
     currentTrack: null,
@@ -108,6 +110,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
   }, [state.isLooping, state.queue, state.queueIndex, locale]);
 
   const playTrack = useCallback((track: TrackModel, queue?: TrackModel[], loc?: string) => {
+    if (!checkGuestLimit()) return;
     const audio = audioRef.current;
     if (!audio) return;
     const currentLocale = loc || locale;
@@ -131,7 +134,7 @@ export function AudioProvider({ children }: { children: ReactNode }) {
       isPlaying: true,
     }));
     setShowMiniPlayer(true);
-  }, [locale, state.volume, state.isLooping]);
+  }, [locale, state.volume, state.isLooping, checkGuestLimit]);
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current;

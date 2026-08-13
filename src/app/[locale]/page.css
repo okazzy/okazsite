@@ -58,6 +58,22 @@
   z-index: 0;
 }
 
+/* Subtle Andalusian/Islamic geometric pattern overlay */
+.hero-pattern {
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 60 60'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='1.5'%3E%3Cpath d='M30 15 L35 25 L45 30 L35 35 L30 45 L25 35 L15 30 L25 25 Z' /%3E%3Cpath d='M0 15 L15 0 L45 0 L60 15 L60 45 L45 60 L15 60 L0 45 Z' /%3E%3Cpath d='M15 15 L25 25 M45 15 L35 25 M15 45 L25 35 M45 45 L35 35' /%3E%3Cpath d='M0 30 L15 30 M45 30 L60 30 M30 0 L30 15 M30 45 L30 60' /%3E%3C/g%3E%3C/svg%3E");
+  background-size: 60px 60px;
+  background-repeat: repeat;
+  background-position: center;
+  opacity: 0.15; /* Increased opacity */
+  pointer-events: none;
+  z-index: 0;
+  /* Soft gradient mask to blend it nicely */
+  mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 90%);
+  -webkit-mask-image: radial-gradient(ellipse at center, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 90%);
+}
+
 .hero-content {
   position: relative;
   z-index: 1;
@@ -78,7 +94,6 @@
   font-family: var(--font-display);
   font-size: clamp(2rem, 5vw, 3rem);
   font-weight: 700;
-  letter-spacing: var(--letter-spacing-wider);
   background: var(--gradient-primary);
   -webkit-background-clip: text;
   background-clip: text;
@@ -315,9 +330,9 @@
 .video-card {
   position: relative;
   flex: 0 0 300px;
-  aspect-ratio: 16 / 10;
   border-radius: var(--radius-lg);
   overflow: hidden;
+  background: var(--color-surface);
   scroll-snap-align: start;
   cursor: pointer;
   border: 1px solid var(--color-border-subtle);
@@ -325,6 +340,26 @@
     transform var(--transition-base),
     border-color var(--transition-base),
     box-shadow var(--transition-base);
+}
+
+.video-card-image-wrapper {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+}
+
+.video-card-info {
+  padding: var(--space-sm) var(--space-md) var(--space-md);
+}
+
+.video-card-desc {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-normal);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .video-card:hover {
@@ -392,12 +427,21 @@
   font-weight: 600;
   color: var(--color-text-primary);
   line-height: var(--line-height-tight);
+  margin-block-end: var(--space-2xs);
 }
 
 .video-card-badges {
+  position: absolute;
+  top: var(--space-sm);
+  left: var(--space-sm);
+  z-index: 1;
   display: flex;
   gap: var(--space-xs);
-  margin-block-end: var(--space-xs);
+}
+
+[dir='rtl'] .video-card-badges {
+  left: auto;
+  right: var(--space-sm);
 }
 
 /* ---------------------------------------------------------

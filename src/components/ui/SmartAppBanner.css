@@ -1,0 +1,87 @@
+.smart-app-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 9999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+.smart-app-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.smart-app-banner-close {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  padding: 4px;
+  margin-left: -8px;
+  margin-inline-end: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.smart-app-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--color-background);
+  object-fit: cover;
+}
+
+.smart-app-banner-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.smart-app-banner-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.smart-app-banner-desc {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.smart-app-banner-action {
+  background: var(--gradient-primary);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+
+/* Push down the navbar when banner is visible */
+body.has-app-banner .navbar {
+  top: 65px !important;
+}
+
+body.has-app-banner .main-content {
+  margin-top: 65px;
+}

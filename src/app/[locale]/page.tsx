@@ -23,7 +23,7 @@ interface CategoryHighlight {
 
 export default function HomePage() {
   const t = useTranslations();
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, checkGuestLimit } = useAuth();
   const locale = useLocale();
 
   const [quote, setQuote] = useState<QuoteModel | null>(null);
@@ -91,15 +91,21 @@ export default function HomePage() {
           <div className="hero-particle" />
           <div className="hero-particle" />
         </div>
+        <div className="hero-pattern" aria-hidden="true" />
         <div className="hero-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <img src="/logo.png" alt={t('appName')} className="hero-logo home-stagger-1" />
           <h1 className="hero-app-name home-stagger-1" style={{ marginTop: 0 }}>{t('appName')}</h1>
           <p className="hero-title home-stagger-2">{t('heroTitle')}</p>
           <p className="hero-subtitle home-stagger-3">{t('heroSubtitle')}</p>
           <div className="hero-cta home-stagger-4">
-            <Link href="/listen" className="btn-primary">
-              {t('navListen')}
-            </Link>
+            <button 
+              className="btn-primary"
+              onClick={() => {
+                document.getElementById('highlights')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              {t('btnDiscoverMore')}
+            </button>
           </div>
           <div className="hero-socials home-stagger-5" style={{ display: 'flex', gap: '1.5rem', marginTop: '2rem', justifyContent: 'center' }}>
             <a href="https://www.tiktok.com/@okaz.souq" target="_blank" rel="noopener noreferrer" className="hero-social-link" aria-label="TikTok">
@@ -134,7 +140,11 @@ export default function HomePage() {
       {/* Loading State */}
       {loading && (
         <div className="home-section" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', padding: 'var(--space-xl) 0' }}>
-          <div className="shimmer" style={{ height: 120, borderRadius: 'var(--radius-lg)' }} />
+          <div className="shimmer" style={{ height: 120, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ color: 'var(--text-primary)', fontWeight: 600, fontSize: '1.1rem', margin: 0, zIndex: 2 }}>
+              {t('msgLoadingContent')}
+            </p>
+          </div>
           <div className="shimmer" style={{ height: 200, borderRadius: 'var(--radius-lg)' }} />
         </div>
       )}
@@ -153,9 +163,11 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* ===== Featured Videos ===== */}
-      {!loading && featuredVideos.length > 0 && (
-        <section className="home-section">
+      {/* ===== Highlights Section ===== */}
+      <div id="highlights">
+        {/* ===== Featured Videos ===== */}
+        {!loading && featuredVideos.length > 0 && (
+          <section className="home-section">
           <div className="home-section-header">
             <h2 className="section-title">{t('featuredPractices')}</h2>
             <Link href="/watch" className="see-all-link">
@@ -168,30 +180,39 @@ export default function HomePage() {
               <div
                 key={`vid-${i}`}
                 className={`video-card card-stagger-${Math.min(i + 1, 4)}`}
-                onClick={() => setSelectedVideo(video)}
+                onClick={() => { if (checkGuestLimit()) setSelectedVideo(video); }}
                 style={{ cursor: 'pointer' }}
                 role="button"
                 tabIndex={0}
               >
-                {getLocalizedText(video.imageUrl, locale) ? (
-                  <img
-                    src={getLocalizedText(video.imageUrl, locale)}
-                    alt={getLocalizedText(video.title, locale)}
-                    className="video-card-image"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="video-card-image" style={{ background: 'var(--color-surface-elevated)' }} />
-                )}
-                <div className="video-card-overlay" />
-                <div className="video-card-play">
-                  <svg viewBox="0 0 24 24" fill="currentColor">
-                    <polygon points="5 3 19 12 5 21 5 3" />
-                  </svg>
+                <div className="video-card-image-wrapper">
+                  {getLocalizedText(video.imageUrl, locale) ? (
+                    <img
+                      src={getLocalizedText(video.imageUrl, locale)}
+                      alt={getLocalizedText(video.title, locale)}
+                      className="video-card-image"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="video-card-image" style={{ background: 'var(--color-surface-elevated)' }} />
+                  )}
+                  <div className="video-card-overlay" />
+                  <div className="video-card-play">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  </div>
                 </div>
-                <h3 className="video-card-title">
-                  {getLocalizedText(video.title, locale)}
-                </h3>
+                <div className="video-card-info">
+                  <h3 className="video-card-title">
+                    {getLocalizedText(video.title, locale)}
+                  </h3>
+                  {getLocalizedText(video.description, locale) && (
+                    <p className="video-card-desc">
+                      {getLocalizedText(video.description, locale)}
+                    </p>
+                  )}
+                </div>
                 {(video.isPremium || video.isPractice) && (
                   <div className="video-card-badges">
                     {video.isPractice && (
@@ -269,6 +290,7 @@ export default function HomePage() {
             </section>
           )
       )}
+      </div>
 
       {/* ===== Download App CTA ===== */}
       <section className="home-section download-cta">
@@ -282,19 +304,31 @@ export default function HomePage() {
           </div>
           <h2 className="download-cta-title">{t('downloadAppTitle')}</h2>
           <p className="download-cta-desc">{t('downloadAppDesc')}</p>
-          <a
-            href="https://apps.apple.com/app/okaz/id6780990007"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="download-cta-link"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            {t('downloadApp')}
-          </a>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center', marginTop: 'var(--space-md)' }}>
+            <a
+              href="https://apps.apple.com/app/okaz/id6780990007"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="download-cta-link"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 1.44C11 6.44 9.22 5 7 5a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z" />
+                <path d="M10 2c1 .5 2 2 2 3.5-1.5.5-3-1.5-3-3.5Z" />
+              </svg>
+              App Store
+            </a>
+            <a
+              href="https://play.google.com/store/apps/details?id=com.okaz.awakening"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="download-cta-link"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="5 3 19 12 5 21 5 3" />
+              </svg>
+              Google Play
+            </a>
+          </div>
         </div>
       </section>
 

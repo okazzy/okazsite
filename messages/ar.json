@@ -90,5 +90,12 @@
   "badgePremium": "مميز",
   "btnClose": "إغلاق",
   "btnPlay": "تشغيل",
-  "quoteOfTheDay": "مقولة اليوم"
+  "quoteOfTheDay": "مقولة اليوم",
+  "cookieConsentTitle": "نحن نقدر خصوصيتك",
+  "cookieConsentMessage": "نحن نستخدم ملفات تعريف الارتباط (الكوكيز) لتحسين تجربتك، وتقديم محتوى مخصص، وتحليل الزيارات. بالنقر على \"موافق\"، فإنك توافق على استخدامنا لملفات تعريف الارتباط.",
+  "btnAccept": "موافق",
+  "btnDecline": "رفض",
+  "navBlog": "المدونة",
+  "btnDiscoverMore": "اكتشف المزيد",
+  "msgLoadingContent": "يتم الآن تحميل المحتوى, الرجاء الانتظار"
 }

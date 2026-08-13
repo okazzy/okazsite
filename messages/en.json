@@ -90,5 +90,12 @@
   "badgePremium": "Premium",
   "btnClose": "Close",
   "btnPlay": "Play",
-  "quoteOfTheDay": "Quote of the Day"
+  "quoteOfTheDay": "Quote of the Day",
+  "cookieConsentTitle": "We value your privacy",
+  "cookieConsentMessage": "We use cookies to enhance your browsing experience, serve personalized content, and analyze our traffic. By clicking \"Accept\", you consent to our use of cookies.",
+  "btnAccept": "Accept",
+  "btnDecline": "Decline",
+  "navBlog": "Blog",
+  "btnDiscoverMore": "Discover More",
+  "msgLoadingContent": "Content is loading, please wait"
 }

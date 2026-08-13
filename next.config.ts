@@ -12,6 +12,20 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/:locale/privacy-policy',
+        destination: '/:locale/privacy',
+        permanent: true,
+      },
+      {
+        source: '/:locale/terms-of-service',
+        destination: '/:locale/terms',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);

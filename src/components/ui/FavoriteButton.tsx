@@ -36,8 +36,8 @@ export default function FavoriteButton({ itemId, type, className = '' }: Favorit
     e.preventDefault();
     e.stopPropagation();
 
-    // If no user is logged in (including anonymous), we can't favorite
-    if (!isAuthenticated) {
+    // If no user is logged in (including anonymous) or firebaseUser is missing, we can't favorite
+    if (!isAuthenticated || !firebaseUser) {
       router.push('/auth/login');
       return;
     }
