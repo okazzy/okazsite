@@ -8,13 +8,20 @@ import { AudioProvider } from '@/contexts/AudioContext';
 import Navbar from '@/components/layout/Navbar';
 import BottomNav from '@/components/layout/BottomNav';
 import MiniPlayer from '@/components/layout/MiniPlayer';
+import CookieBanner from '@/components/ui/CookieBanner';
+import SmartAppBanner from '@/components/ui/SmartAppBanner';
 import '@/app/globals.css';
 import '@/components/layout/layout.css';
+import CanonicalLink from '@/components/layout/CanonicalLink';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://www.okaz.io'),
   title: 'عكاظ | Okaz',
   description: 'Okaz - Mindfulness, meditation, and healing frequencies',
+  itunes: {
+    appId: '6780990007',
+  },
 };
 
 const cinzel = Cinzel({ subsets: ['latin'], variable: '--font-cinzel', display: 'swap' });
@@ -40,15 +47,20 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} dir={dir} className={`${cinzel.variable} ${lato.variable} ${notoKufi.variable}`}>
+      <head>
+        <CanonicalLink />
+      </head>
       <body>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             <AudioProvider>
               <div className="app-layout">
+                <SmartAppBanner />
                 <Navbar locale={locale} />
                 <main className="main-content">{children}</main>
                 <MiniPlayer locale={locale} />
                 <BottomNav locale={locale} />
+                <CookieBanner />
               </div>
             </AudioProvider>
           </AuthProvider>
