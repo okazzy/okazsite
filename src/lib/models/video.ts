@@ -7,4 +7,5 @@ export interface VideoModel {
   orderId: number;
   isPremium: boolean;
   isPractice: boolean;
+  hide?: boolean;
 }

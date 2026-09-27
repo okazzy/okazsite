@@ -58,6 +58,7 @@ function parseTrack(id: string, data: Record<string, unknown>): TrackModel {
     isPremium: (data.isPremium as boolean) ?? false,
     categoryId: (data.categoryId as string) ?? undefined,
     subcategoryId: (data.subcategoryId as string) ?? undefined,
+    hide: (data.hide as boolean) ?? false,
   };
 }
 
@@ -71,6 +72,7 @@ function parseVideo(id: string, data: Record<string, unknown>): VideoModel {
     orderId: (data.orderId as number) ?? 0,
     isPremium: (data.isPremium as boolean) ?? false,
     isPractice: (data.isPractice as boolean) ?? false,
+    hide: (data.hide as boolean) ?? false,
   };
 }
 
@@ -159,7 +161,9 @@ export async function getTracks(
     orderBy('orderId', 'asc')
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => parseTrack(d.id, d.data() as Record<string, unknown>));
+  return snap.docs
+    .map((d) => parseTrack(d.id, d.data() as Record<string, unknown>))
+    .filter((t) => !t.hide);
 }
 
 /* ================================================================== */
@@ -204,7 +208,9 @@ export async function getVideos(
     orderBy('orderId', 'asc')
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => parseVideo(d.id, d.data() as Record<string, unknown>));
+  return snap.docs
+    .map((d) => parseVideo(d.id, d.data() as Record<string, unknown>))
+    .filter((v) => !v.hide);
 }
 
 /* ================================================================== */
@@ -262,6 +268,7 @@ export async function searchTracks(
 
   return snap.docs
     .map((d) => parseTrack(d.id, d.data() as Record<string, unknown>))
+    .filter((track) => !track.hide)
     .filter((track) => {
       const titleAr = getLocalizedText(track.title, 'ar').toLowerCase();
       const titleEn = getLocalizedText(track.title, 'en').toLowerCase();
@@ -283,6 +290,7 @@ export async function searchVideos(
 
   return snap.docs
     .map((d) => parseVideo(d.id, d.data() as Record<string, unknown>))
+    .filter((video) => !video.hide)
     .filter((video) => {
       const titleAr = getLocalizedText(video.title, 'ar').toLowerCase();
       const titleEn = getLocalizedText(video.title, 'en').toLowerCase();
@@ -307,6 +315,7 @@ export async function getFavoriteTracks(
   const snap = await getDocs(collectionGroup(db, 'tracks'));
   const allTracks = snap.docs
     .map((d) => parseTrack(d.id, d.data() as Record<string, unknown>))
+    .filter((t) => !t.hide)
     .filter((t) => trackIds.includes(t.trackId));
 
   // Deduplicate by trackId
@@ -329,6 +338,7 @@ export async function getFavoriteVideos(
   const snap = await getDocs(collectionGroup(db, 'videos'));
   const allVideos = snap.docs
     .map((d) => parseVideo(d.id, d.data() as Record<string, unknown>))
+    .filter((v) => !v.hide)
     .filter((v) => videoIds.includes(v.videoId));
 
   // Deduplicate by videoId
