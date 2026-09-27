@@ -337,9 +337,12 @@ export async function getFavoriteVideos(
 
   const snap = await getDocs(collectionGroup(db, 'videos'));
   const allVideos = snap.docs
+    .filter(d => {
+      const vId = d.data().videoId || d.id;
+      return videoIds.includes(d.id) || videoIds.includes(vId);
+    })
     .map((d) => parseVideo(d.id, d.data() as Record<string, unknown>))
-    .filter((v) => !v.hide)
-    .filter((v) => videoIds.includes(v.videoId));
+    .filter((v) => !v.hide);
 
   // Deduplicate by videoId
   const uniqueVideos: VideoModel[] = [];

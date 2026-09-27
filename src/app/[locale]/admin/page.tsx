@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { Link } from '@/i18n/routing';
 import { getBlogPosts, saveBlogPost } from '@/lib/firebase/firestore';
 import { uploadImage } from '@/lib/firebase/storage';
 import type { BlogPostModel } from '@/lib/models';
@@ -115,7 +116,11 @@ export default function AdminPage() {
                 <tbody>
                   {posts.map(post => (
                     <tr key={post.id}>
-                      <td>{post.title.ar}</td>
+                      <td>
+                        <Link href={`/blog/${post.slug}`} target="_blank" style={{ textDecoration: 'underline', color: 'var(--color-primary)' }}>
+                          {post.title.ar}
+                        </Link>
+                      </td>
                       <td>
                         <span className={post.status === 'draft' ? 'badge-draft' : 'badge-publish'} style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', background: post.status === 'draft' ? '#f5a623' : '#4caf50', color: '#fff' }}>
                           {post.status === 'draft' ? 'Draft' : 'Published'}

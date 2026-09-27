@@ -65,8 +65,11 @@ export default function BlogPostPage() {
           return;
         }
         setPost(data);
-        if (data.firebaseVideoId) {
-          const videos = await getFavoriteVideos([data.firebaseVideoId]);
+        if (data.firebaseVideoId && data.firebaseVideoId.trim() !== '') {
+          const trimmedId = data.firebaseVideoId.trim();
+          console.log("Fetching video for ID:", trimmedId);
+          const videos = await getFavoriteVideos([trimmedId]);
+          console.log("Found videos:", videos.length);
           if (videos.length > 0) setFirebaseVideo(videos[0]);
         }
       } catch (err) {
