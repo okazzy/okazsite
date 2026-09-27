@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useParams, useRouter } from 'next/navigation';
-import { getBlogPostBySlug } from '@/lib/firebase/firestore';
+import { getBlogPostBySlug, getFavoriteVideos } from '@/lib/firebase/firestore';
+import VideoList from '@/components/videos/VideoList';
 import { getLocalizedText } from '@/lib/models';
 import type { BlogPostModel } from '@/lib/models';
 import { Link } from '@/i18n/routing';
@@ -50,6 +51,7 @@ export default function BlogPostPage() {
   const slug = params.slug as string;
 
   const [post, setPost] = useState<BlogPostModel | null>(null);
+  const [firebaseVideo, setFirebaseVideo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,6 +65,10 @@ export default function BlogPostPage() {
           return;
         }
         setPost(data);
+        if (data.firebaseVideoId) {
+          const videos = await getFavoriteVideos([data.firebaseVideoId]);
+          if (videos.length > 0) setFirebaseVideo(videos[0]);
+        }
       } catch (err) {
         console.error('Error fetching blog post:', err);
       } finally {
@@ -130,6 +136,13 @@ export default function BlogPostPage() {
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
             allowFullScreen
           />
+        </div>
+      )}
+    
+      {firebaseVideo && (
+        <div style={{ marginTop: '3rem' }}>
+          <h3 style={{ marginBottom: '1rem', color: 'var(--color-primary)' }}>{locale === 'ar' ? 'فيديو ذو صلة' : 'Related Video'}</h3>
+          <VideoList videos={[firebaseVideo]} locale={locale} />
         </div>
       )}
     </article>

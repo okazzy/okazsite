@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { getBlogPosts, saveBlogPost } from '@/lib/firebase/firestore';
 import { uploadImage } from '@/lib/firebase/storage';
 import type { BlogPostModel } from '@/lib/models';
-import initialPosts from '@/lib/data/initial-posts.json';
 import './admin.css';
 
 export default function AdminPage() {
@@ -18,8 +17,7 @@ export default function AdminPage() {
   const [currentPost, setCurrentPost] = useState<Partial<BlogPostModel>>({});
   const [uploadingImage, setUploadingImage] = useState(false);
   
-  const [migrating, setMigrating] = useState(false);
-  const [migrationStatus, setMigrationStatus] = useState('');
+  
   
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
@@ -44,7 +42,7 @@ export default function AdminPage() {
   }, [loading, isAuthenticated, firebaseUser, router]);
 
   const fetchPosts = async () => {
-    const data = await getBlogPosts();
+    const data = await getBlogPosts(true);
     setPosts(data);
   };
 
@@ -52,30 +50,7 @@ export default function AdminPage() {
     if (isAdmin) fetchPosts();
   }, [isAdmin]);
 
-  const handleMigrate = async () => {
-    if (!confirm('Are you sure you want to import 14 WordPress posts? This will overwrite existing posts with the same slugs.')) return;
-    
-    setMigrating(true);
-    setMigrationStatus('Starting migration...');
-    
-    try {
-      let count = 0;
-      for (const post of initialPosts as BlogPostModel[]) {
-        setMigrationStatus(`Importing ${post.title.en}...`);
-        await saveBlogPost(post);
-        count++;
-      }
-      setMigrationStatus(`Successfully imported ${count} posts!`);
-      fetchPosts();
-    } catch (err: any) {
-      console.error(err);
-      setMigrationStatus(`Error: ${err.message}`);
-    } finally {
-      setMigrating(false);
-    }
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPost.slug || !currentPost.title?.en) {
       alert('Slug and English Title are required');
@@ -90,6 +65,7 @@ export default function AdminPage() {
       excerpt: currentPost.excerpt || { en: '', ar: '' },
       imageUrl: currentPost.imageUrl || '',
       youtubeUrl: currentPost.youtubeUrl || { en: '', ar: '' },
+      firebaseVideoId: currentPost.firebaseVideoId || '',
       author: currentPost.author || 'Okaz',
       publishedAt: currentPost.publishedAt || Date.now(),
       status: currentPost.status || 'publish'
@@ -120,11 +96,9 @@ export default function AdminPage() {
             <button className="btn-primary" onClick={() => { setCurrentPost({}); setIsEditing(true); }}>
               + Create New Post
             </button>
-            <button className="btn-secondary" onClick={handleMigrate} disabled={migrating}>
-              {migrating ? 'Importing...' : 'Import WordPress XML Posts'}
-            </button>
+            
           </div>
-          {migrationStatus && <p style={{ color: 'var(--color-primary)' }}>{migrationStatus}</p>}
+          
           
           <div className="admin-list">
             <h2>Published Posts</h2>
@@ -133,6 +107,7 @@ export default function AdminPage() {
                 <thead>
                   <tr>
                     <th>Title</th>
+                    <th>Status</th>
                     <th>Date</th>
                     <th>Actions</th>
                   </tr>
@@ -141,6 +116,11 @@ export default function AdminPage() {
                   {posts.map(post => (
                     <tr key={post.id}>
                       <td>{post.title.ar}</td>
+                      <td>
+                        <span className={post.status === 'draft' ? 'badge-draft' : 'badge-publish'} style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.8rem', background: post.status === 'draft' ? '#f5a623' : '#4caf50', color: '#fff' }}>
+                          {post.status === 'draft' ? 'Draft' : 'Published'}
+                        </span>
+                      </td>
                       <td>{new Date(post.publishedAt).toLocaleDateString()}</td>
                       <td>
                         <button onClick={() => { setCurrentPost(post); setIsEditing(true); }}>Edit</button>
@@ -217,6 +197,19 @@ export default function AdminPage() {
             </label>
             <label>YouTube Video URL (English)
               <input type="text" placeholder="e.g. https://youtube.com/watch?v=..." value={currentPost.youtubeUrl?.en || ''} onChange={e => setCurrentPost({...currentPost, youtubeUrl: { ...currentPost.youtubeUrl, en: e.target.value } as any})} />
+            </label>
+          </div>
+          
+          
+          <div className="form-row">
+            <label>Firebase Video Doc ID (Optional)
+              <input type="text" placeholder="e.g. 5x8g9... (Firestore Document ID)" value={currentPost.firebaseVideoId || ''} onChange={e => setCurrentPost({...currentPost, firebaseVideoId: e.target.value})} />
+            </label>
+            <label>Status
+              <select value={currentPost.status || 'publish'} onChange={e => setCurrentPost({...currentPost, status: e.target.value as 'publish' | 'draft'})}>
+                <option value="publish">Publish</option>
+                <option value="draft">Draft</option>
+              </select>
             </label>
           </div>
           

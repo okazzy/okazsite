@@ -6,6 +6,7 @@ export interface BlogPostModel {
   excerpt: Record<string, string>;
   imageUrl: string;
   youtubeUrl?: Record<string, string>; // e.g. { ar: "https://...", en: "https://..." }
+  firebaseVideoId?: string; // Links to a VideoModel doc id in Firestore
   author: string;
   publishedAt: number; // timestamp in ms
   status: 'publish' | 'draft';

@@ -464,23 +464,25 @@ export async function incrementDailyPlays(uid: string): Promise<number> {
 
 import type { BlogPostModel } from '../models';
 
-export async function getBlogPosts(): Promise<BlogPostModel[]> {
+export async function getBlogPosts(includeDrafts = false): Promise<BlogPostModel[]> {
   const blogsRef = collection(db, 'blogs');
-  // Avoid orderBy to prevent Firestore requiring a composite index, we sort in memory instead
-  const q = query(blogsRef, where('status', '==', 'publish'));
   
-  const snap = await getDocs(q);
-  const posts = snap.docs.map(doc => ({
+  const snap = await getDocs(blogsRef);
+  let posts = snap.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   })) as BlogPostModel[];
+  
+  if (!includeDrafts) {
+    posts = posts.filter(p => p.status === 'publish');
+  }
   
   // Sort descending by publishedAt
   return posts.sort((a, b) => b.publishedAt - a.publishedAt);
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPostModel | null> {
-  const posts = await getBlogPosts();
+  const posts = await getBlogPosts(true); // Allow previewing drafts
   let decodedSlug = slug;
   try { decodedSlug = decodeURIComponent(slug); } catch {}
   
