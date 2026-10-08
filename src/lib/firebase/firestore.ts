@@ -14,7 +14,9 @@ import {
   where,
   limit,
   setDoc,
+  runTransaction,
 } from 'firebase/firestore';
+import { nextDailyPlays } from './userDoc';
 import type {
   CategoryModel,
   SubcategoryModel,
@@ -423,42 +425,31 @@ export async function getGuestLimit(): Promise<number> {
 
 export async function incrementDailyPlays(uid: string): Promise<number> {
   const userRef = doc(db, 'users', uid);
-  const snap = await getDoc(userRef);
 
-  let currentPlays = 0;
+  // Users are shared with the mobile app: only touch the two guest-limit
+  // fields, never `isGuest` or anything else on an existing document.
+  return runTransaction(db, async (tx) => {
+    const snap = await tx.get(userRef);
+    const data = snap.exists() ? snap.data() : undefined;
+    const lastPlayed = (data?.lastPlayedDate as Timestamp | undefined)?.toDate();
+    const newPlays = nextDailyPlays(
+      data?.dailyPlays as number | undefined,
+      lastPlayed,
+      new Date()
+    );
 
-  if (snap.exists()) {
-    const data = snap.data();
-    const lastPlayed = data.lastPlayedDate as Timestamp | undefined;
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    currentPlays = (data.dailyPlays as number) ?? 0;
-
-    // Reset count if last played date is a different day
-    if (lastPlayed) {
-      const lastDate = lastPlayed.toDate();
-      const lastDay = new Date(
-        lastDate.getFullYear(),
-        lastDate.getMonth(),
-        lastDate.getDate()
-      );
-      if (lastDay.getTime() < today.getTime()) {
-        currentPlays = 0;
-      }
+    if (snap.exists()) {
+      tx.update(userRef, { dailyPlays: newPlays, lastPlayedDate: Timestamp.now() });
+    } else {
+      tx.set(userRef, {
+        uid,
+        isGuest: true,
+        dailyPlays: newPlays,
+        lastPlayedDate: Timestamp.now(),
+      });
     }
-  }
-
-  const newPlays = currentPlays + 1;
-
-  await setDoc(userRef, {
-    uid,
-    isGuest: true,
-    dailyPlays: newPlays,
-    lastPlayedDate: Timestamp.now(),
-  }, { merge: true });
-
-  return newPlays;
+    return newPlays;
+  });
 }
 
 // =======================
