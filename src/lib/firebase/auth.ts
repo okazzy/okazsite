@@ -15,15 +15,22 @@ import {
   type User,
   type Unsubscribe,
 } from 'firebase/auth';
-import { doc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, setDoc, runTransaction, Timestamp } from 'firebase/firestore';
 import { auth, db } from './config';
+import { planUserDocWrite } from './userDoc';
 import type { UserModel } from '../models';
 
 /* ------------------------------------------------------------------ */
-/*  Helper: create user document in Firestore                         */
+/*  Helper: make sure the user document exists                        */
 /* ------------------------------------------------------------------ */
 
-async function createUserDoc(
+/**
+ * Users are shared with the mobile app. If the document already exists it holds
+ * the user's favorites, premium flag and streaks, so it is never reset: we only
+ * create it when missing, or fill empty profile fields. See userDoc.ts.
+ * Runs in a transaction so the exists-check and the write cannot race.
+ */
+async function ensureUserDoc(
   uid: string,
   options: {
     email?: string;
@@ -32,23 +39,18 @@ async function createUserDoc(
     isGuest: boolean;
   }
 ): Promise<void> {
-  // Firestore does NOT accept undefined values — only include defined fields
-  const userData: Record<string, unknown> = {
-    uid,
-    isPremium: false,
-    isGuest: options.isGuest,
-    favorites: [],
-    favoriteVideos: [],
-    dailyPlays: 0,
-    lastPlayedDate: Timestamp.now(),
-  };
-
-  if (options.email) userData.email = options.email;
-  if (options.displayName) userData.displayName = options.displayName;
-  if (options.photoUrl) userData.photoUrl = options.photoUrl;
-
-  // merge: true prevents overwriting existing user data on repeat sign-ins
-  await setDoc(doc(db, 'users', uid), userData, { merge: true });
+  const ref = doc(db, 'users', uid);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    const plan = planUserDocWrite(
+      snap.exists() ? (snap.data() as Record<string, unknown>) : undefined,
+      uid,
+      options,
+      Timestamp.now()
+    );
+    if (plan.kind === 'create') tx.set(ref, plan.data);
+    else if (plan.kind === 'update') tx.update(ref, plan.data);
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -59,7 +61,7 @@ export async function signInAnonymously(): Promise<User> {
   const credential = await firebaseSignInAnonymously(auth);
   const user = credential.user;
 
-  await createUserDoc(user.uid, { isGuest: true });
+  await ensureUserDoc(user.uid, { isGuest: true });
   return user;
 }
 
@@ -92,7 +94,7 @@ export async function registerWithEmail(
   const user = credential.user;
 
   await updateProfile(user, { displayName });
-  await createUserDoc(user.uid, {
+  await ensureUserDoc(user.uid, {
     email,
     displayName,
     isGuest: false,
@@ -110,7 +112,7 @@ export async function signInWithGoogle(): Promise<User> {
   const credential = await signInWithPopup(auth, provider);
   const user = credential.user;
 
-  await createUserDoc(user.uid, {
+  await ensureUserDoc(user.uid, {
     email: user.email ?? undefined,
     displayName: user.displayName ?? undefined,
     photoUrl: user.photoURL ?? undefined,
@@ -132,7 +134,7 @@ export async function signInWithApple(): Promise<User> {
   const credential = await signInWithPopup(auth, provider);
   const user = credential.user;
 
-  await createUserDoc(user.uid, {
+  await ensureUserDoc(user.uid, {
     email: user.email ?? undefined,
     displayName: user.displayName ?? undefined,
     photoUrl: user.photoURL ?? undefined,
