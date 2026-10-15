@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import type { VideoModel } from '@/lib/models';
 import { getLocalizedText } from '@/lib/models';
@@ -10,12 +10,62 @@ import { useAuth } from '@/contexts/AuthContext';
 interface VideoListProps {
   videos: VideoModel[];
   locale: string;
+  /** Video to open on arrival, from a shared link's `?v=` (e.g. shared from the app). */
+  initialVideoId?: string | null;
 }
 
-export default function VideoList({ videos, locale }: VideoListProps) {
+/**
+ * Mirrors the open video in the address bar as `?v={videoId}` (or removes it)
+ * so the page URL can be shared. replaceState keeps the path (with its locale),
+ * the other params and the hash, adds no history entry, and does not trigger a
+ * Next.js navigation or refetch (Next only syncs useSearchParams).
+ */
+function setVideoParamInUrl(videoId: string | null) {
+  const url = new URL(window.location.href);
+  if (videoId) {
+    url.searchParams.set('v', videoId);
+  } else {
+    url.searchParams.delete('v');
+  }
+  if (url.href !== window.location.href) {
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+}
+
+export default function VideoList({ videos, locale, initialVideoId }: VideoListProps) {
   const t = useTranslations();
-  const { checkGuestLimit } = useAuth();
+  const { checkGuestLimit, loading: authLoading } = useAuth();
   const [selectedVideo, setSelectedVideo] = useState<VideoModel | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  // The shared-link video id, taken once at mount and cleared after the first
+  // try, so it never re-opens after the user closes it (later `?v=` changes in
+  // the address bar come from this component itself).
+  const pendingVideoIdRef = useRef(initialVideoId || null);
+
+  const openVideo = useCallback((video: VideoModel) => {
+    setSelectedVideo(video);
+    setVideoParamInUrl(video.videoId);
+  }, []);
+
+  const closeVideo = useCallback(() => {
+    setSelectedVideo(null);
+    setVideoParamInUrl(null);
+  }, []);
+
+  // Open the video from a shared link once, when the videos and auth are ready.
+  // Same guest limit as a tap; an unknown or hidden id just shows the list.
+  useEffect(() => {
+    const videoId = pendingVideoIdRef.current;
+    if (!videoId || authLoading || videos.length === 0) return;
+    pendingVideoIdRef.current = null;
+
+    const index = videos.findIndex((v) => v.videoId === videoId);
+    if (index === -1 || !checkGuestLimit()) return;
+
+    // Bring its card into view behind the modal, for when the modal is closed.
+    gridRef.current?.children[index]?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    setSelectedVideo(videos[index]);
+  }, [authLoading, videos, checkGuestLimit]);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -23,7 +73,7 @@ export default function VideoList({ videos, locale }: VideoListProps) {
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        setSelectedVideo(null);
+        closeVideo();
       }
     }
 
@@ -35,33 +85,33 @@ export default function VideoList({ videos, locale }: VideoListProps) {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [selectedVideo]);
+  }, [selectedVideo, closeVideo]);
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (e.target === e.currentTarget) {
-        setSelectedVideo(null);
+        closeVideo();
       }
     },
-    []
+    [closeVideo]
   );
 
   return (
     <>
-      <div className="video-grid">
+      <div className="video-grid" ref={gridRef}>
         {videos.map((video, index) => (
           <div
             key={video.videoId}
             className="video-card"
             style={{ animationDelay: `${index * 0.06}s` }}
-            onClick={() => { if (checkGuestLimit()) setSelectedVideo(video); }}
+            onClick={() => { if (checkGuestLimit()) openVideo(video); }}
             role="button"
             tabIndex={0}
             aria-label={`${t('btnPlay')} ${getLocalizedText(video.title, locale)}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                if (checkGuestLimit()) setSelectedVideo(video);
+                if (checkGuestLimit()) openVideo(video);
               }
             }}
           >
@@ -135,7 +185,7 @@ export default function VideoList({ videos, locale }: VideoListProps) {
             {/* Close Button */}
             <button
               className="video-modal__close"
-              onClick={() => setSelectedVideo(null)}
+              onClick={closeVideo}
               aria-label={t('btnClose')}
             >
               ✕
