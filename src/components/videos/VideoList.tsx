@@ -56,6 +56,14 @@ export default function VideoList({ videos, locale, initialVideoId }: VideoListP
     setVideoParamInUrl(null);
   }, []);
 
+  // A tap on a card replaces any shared-link video still waiting for sign-in,
+  // so signing in afterwards never opens a different video than the one tapped.
+  const playFromTap = useCallback((video: VideoModel) => {
+    pendingVideoIdRef.current = null;
+    waitingForSignInRef.current = false;
+    if (checkGuestLimit()) openVideo(video);
+  }, [checkGuestLimit, openVideo]);
+
   // Open the video from a shared link once, when the videos and auth are ready.
   // Same guest limit as a tap; an unknown or hidden id just shows the list.
   // A guest over the limit gets the paywall: the id is kept and the video opens
@@ -120,14 +128,14 @@ export default function VideoList({ videos, locale, initialVideoId }: VideoListP
             key={video.videoId}
             className="video-card"
             style={{ animationDelay: `${index * 0.06}s` }}
-            onClick={() => { if (checkGuestLimit()) openVideo(video); }}
+            onClick={() => playFromTap(video)}
             role="button"
             tabIndex={0}
             aria-label={`${t('btnPlay')} ${getLocalizedText(video.title, locale)}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                if (checkGuestLimit()) openVideo(video);
+                playFromTap(video);
               }
             }}
           >
