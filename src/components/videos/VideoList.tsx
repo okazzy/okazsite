@@ -34,13 +34,17 @@ function setVideoParamInUrl(videoId: string | null) {
 
 export default function VideoList({ videos, locale, initialVideoId }: VideoListProps) {
   const t = useTranslations();
-  const { checkGuestLimit, loading: authLoading } = useAuth();
+  const { checkGuestLimit, isAuthenticated, loading: authLoading } = useAuth();
   const [selectedVideo, setSelectedVideo] = useState<VideoModel | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  // The shared-link video id, taken once at mount and cleared after the first
-  // try, so it never re-opens after the user closes it (later `?v=` changes in
-  // the address bar come from this component itself).
+  // The shared-link video id, taken once at mount and cleared once it opens (or
+  // is not in the list), so it never re-opens after the user closes it (later
+  // `?v=` changes in the address bar come from this component itself).
   const pendingVideoIdRef = useRef(initialVideoId || null);
+  // Set when the guest limit blocked the shared video (the paywall is showing).
+  // It is then retried only after sign-in, so the paywall is not shown again
+  // and checkGuestLimit never counts an extra guest play.
+  const waitingForSignInRef = useRef(false);
 
   const openVideo = useCallback((video: VideoModel) => {
     setSelectedVideo(video);
@@ -54,18 +58,30 @@ export default function VideoList({ videos, locale, initialVideoId }: VideoListP
 
   // Open the video from a shared link once, when the videos and auth are ready.
   // Same guest limit as a tap; an unknown or hidden id just shows the list.
+  // A guest over the limit gets the paywall: the id is kept and the video opens
+  // once they sign in there (the paywall signs in in place, no remount).
   useEffect(() => {
     const videoId = pendingVideoIdRef.current;
     if (!videoId || authLoading || videos.length === 0) return;
-    pendingVideoIdRef.current = null;
+    if (waitingForSignInRef.current && !isAuthenticated) return;
 
     const index = videos.findIndex((v) => v.videoId === videoId);
-    if (index === -1 || !checkGuestLimit()) return;
+    if (index === -1) {
+      pendingVideoIdRef.current = null;
+      return;
+    }
 
-    // Bring its card into view behind the modal, for when the modal is closed.
+    // Bring its card into view first (behind the modal or the paywall), so it
+    // is there when the modal is closed.
     gridRef.current?.children[index]?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    if (!checkGuestLimit()) {
+      waitingForSignInRef.current = true;
+      return;
+    }
+
+    pendingVideoIdRef.current = null;
     setSelectedVideo(videos[index]);
-  }, [authLoading, videos, checkGuestLimit]);
+  }, [authLoading, isAuthenticated, videos, checkGuestLimit]);
 
   // Close modal on Escape key
   useEffect(() => {

@@ -12,16 +12,9 @@ import {
 } from '@/lib/firebase/firestore';
 import { getLocalizedText } from '@/lib/models';
 import type { CategoryModel, SubcategoryModel, VideoModel } from '@/lib/models';
+import { readVideoParam } from '@/lib/videoLink';
 import VideoList from '@/components/videos/VideoList';
 import '../../watch.css';
-
-/** Longest `?v=` value accepted from a link (real video ids are much shorter). */
-const MAX_VIDEO_PARAM_LENGTH = 200;
-
-/** The video id from a shared link's `?v=`, or null when missing or invalid. */
-function readVideoParam(value: string | null): string | null {
-  return value && value.length <= MAX_VIDEO_PARAM_LENGTH ? value : null;
-}
 
 /**
  * VideoList that opens the video named in `?v=`, so a shared link like
