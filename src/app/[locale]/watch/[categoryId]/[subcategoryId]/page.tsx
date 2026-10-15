@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/routing';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -12,8 +12,26 @@ import {
 } from '@/lib/firebase/firestore';
 import { getLocalizedText } from '@/lib/models';
 import type { CategoryModel, SubcategoryModel, VideoModel } from '@/lib/models';
+import { readVideoParam } from '@/lib/videoLink';
 import VideoList from '@/components/videos/VideoList';
 import '../../watch.css';
+
+/**
+ * VideoList that opens the video named in `?v=`, so a shared link like
+ * /ar/watch/{categoryId}/{subcategoryId}?v={videoId} plays that exact video.
+ * Kept in its own component under a Suspense boundary because it reads
+ * useSearchParams (required if this route is ever prerendered).
+ */
+function DeepLinkedVideoList({ videos, locale }: { videos: VideoModel[]; locale: string }) {
+  const searchParams = useSearchParams();
+  return (
+    <VideoList
+      videos={videos}
+      locale={locale}
+      initialVideoId={readVideoParam(searchParams.get('v'))}
+    />
+  );
+}
 
 export default function WatchVideosPage() {
   const t = useTranslations();
@@ -77,7 +95,9 @@ export default function WatchVideosPage() {
           <p className="watch-empty__text">{t('errNoVideosAvailable')}</p>
         </div>
       ) : (
-        <VideoList videos={videos} locale={locale} />
+        <Suspense fallback={<VideoList videos={videos} locale={locale} />}>
+          <DeepLinkedVideoList videos={videos} locale={locale} />
+        </Suspense>
       )}
     </div>
   );

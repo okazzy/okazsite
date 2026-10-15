@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import type { VideoModel } from '@/lib/models';
 import { getLocalizedText } from '@/lib/models';
@@ -10,12 +10,86 @@ import { useAuth } from '@/contexts/AuthContext';
 interface VideoListProps {
   videos: VideoModel[];
   locale: string;
+  /** Video to open on arrival, from a shared link's `?v=` (e.g. shared from the app). */
+  initialVideoId?: string | null;
 }
 
-export default function VideoList({ videos, locale }: VideoListProps) {
+/**
+ * Mirrors the open video in the address bar as `?v={videoId}` (or removes it)
+ * so the page URL can be shared. replaceState keeps the path (with its locale),
+ * the other params and the hash, adds no history entry, and does not trigger a
+ * Next.js navigation or refetch (Next only syncs useSearchParams).
+ */
+function setVideoParamInUrl(videoId: string | null) {
+  const url = new URL(window.location.href);
+  if (videoId) {
+    url.searchParams.set('v', videoId);
+  } else {
+    url.searchParams.delete('v');
+  }
+  if (url.href !== window.location.href) {
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }
+}
+
+export default function VideoList({ videos, locale, initialVideoId }: VideoListProps) {
   const t = useTranslations();
-  const { checkGuestLimit } = useAuth();
+  const { checkGuestLimit, isAuthenticated, loading: authLoading } = useAuth();
   const [selectedVideo, setSelectedVideo] = useState<VideoModel | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  // The shared-link video id, taken once at mount and cleared once it opens (or
+  // is not in the list), so it never re-opens after the user closes it (later
+  // `?v=` changes in the address bar come from this component itself).
+  const pendingVideoIdRef = useRef(initialVideoId || null);
+  // Set when the guest limit blocked the shared video (the paywall is showing).
+  // It is then retried only after sign-in, so the paywall is not shown again
+  // and checkGuestLimit never counts an extra guest play.
+  const waitingForSignInRef = useRef(false);
+
+  const openVideo = useCallback((video: VideoModel) => {
+    setSelectedVideo(video);
+    setVideoParamInUrl(video.videoId);
+  }, []);
+
+  const closeVideo = useCallback(() => {
+    setSelectedVideo(null);
+    setVideoParamInUrl(null);
+  }, []);
+
+  // A tap on a card replaces any shared-link video still waiting for sign-in,
+  // so signing in afterwards never opens a different video than the one tapped.
+  const playFromTap = useCallback((video: VideoModel) => {
+    pendingVideoIdRef.current = null;
+    waitingForSignInRef.current = false;
+    if (checkGuestLimit()) openVideo(video);
+  }, [checkGuestLimit, openVideo]);
+
+  // Open the video from a shared link once, when the videos and auth are ready.
+  // Same guest limit as a tap; an unknown or hidden id just shows the list.
+  // A guest over the limit gets the paywall: the id is kept and the video opens
+  // once they sign in there (the paywall signs in in place, no remount).
+  useEffect(() => {
+    const videoId = pendingVideoIdRef.current;
+    if (!videoId || authLoading || videos.length === 0) return;
+    if (waitingForSignInRef.current && !isAuthenticated) return;
+
+    const index = videos.findIndex((v) => v.videoId === videoId);
+    if (index === -1) {
+      pendingVideoIdRef.current = null;
+      return;
+    }
+
+    // Bring its card into view first (behind the modal or the paywall), so it
+    // is there when the modal is closed.
+    gridRef.current?.children[index]?.scrollIntoView({ block: 'center', behavior: 'instant' });
+    if (!checkGuestLimit()) {
+      waitingForSignInRef.current = true;
+      return;
+    }
+
+    pendingVideoIdRef.current = null;
+    setSelectedVideo(videos[index]);
+  }, [authLoading, isAuthenticated, videos, checkGuestLimit]);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -23,7 +97,7 @@ export default function VideoList({ videos, locale }: VideoListProps) {
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') {
-        setSelectedVideo(null);
+        closeVideo();
       }
     }
 
@@ -35,33 +109,33 @@ export default function VideoList({ videos, locale }: VideoListProps) {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [selectedVideo]);
+  }, [selectedVideo, closeVideo]);
 
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (e.target === e.currentTarget) {
-        setSelectedVideo(null);
+        closeVideo();
       }
     },
-    []
+    [closeVideo]
   );
 
   return (
     <>
-      <div className="video-grid">
+      <div className="video-grid" ref={gridRef}>
         {videos.map((video, index) => (
           <div
             key={video.videoId}
             className="video-card"
             style={{ animationDelay: `${index * 0.06}s` }}
-            onClick={() => { if (checkGuestLimit()) setSelectedVideo(video); }}
+            onClick={() => playFromTap(video)}
             role="button"
             tabIndex={0}
             aria-label={`${t('btnPlay')} ${getLocalizedText(video.title, locale)}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
-                if (checkGuestLimit()) setSelectedVideo(video);
+                playFromTap(video);
               }
             }}
           >
@@ -135,7 +209,7 @@ export default function VideoList({ videos, locale }: VideoListProps) {
             {/* Close Button */}
             <button
               className="video-modal__close"
-              onClick={() => setSelectedVideo(null)}
+              onClick={closeVideo}
               aria-label={t('btnClose')}
             >
               ✕
