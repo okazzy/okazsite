@@ -5,6 +5,7 @@ import { User, onAuthStateChanged } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
 import { initAppCheck } from '@/lib/firebase/appcheck';
 import { getUserData, getGuestLimit, incrementDailyPlays } from '@/lib/firebase/firestore';
+import { playsToday } from '@/lib/firebase/userDoc';
 import { signInAnonymously as firebaseSignInAnonymously } from '@/lib/firebase/auth';
 import type { UserModel } from '@/lib/models';
 import PaywallModal from '@/components/modals/PaywallModal';
@@ -92,8 +93,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkGuestLimit = useCallback((): boolean => {
     if (isAuthenticated) return true;
 
-    // Default to 0 plays if userData is null (e.g., fresh guest)
-    const plays = userData ? userData.dailyPlays : 0;
+    // Default to 0 plays if userData is null (e.g., fresh guest). Plays from an
+    // earlier day do not count, otherwise a guest who hit the limit once would
+    // stay blocked forever (the stored count only resets on an allowed play).
+    const plays = userData
+      ? playsToday(userData.dailyPlays, userData.lastPlayedDate?.toDate(), new Date())
+      : 0;
     
     if (plays >= guestLimit) {
       setShowPaywall(true);

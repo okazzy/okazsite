@@ -71,13 +71,17 @@ export function planUserDocWrite(
   return Object.keys(data).length > 0 ? { kind: 'update', data } : { kind: 'none' };
 }
 
-/** Next guest play count: resets when the last play was on an earlier day. */
-export function nextDailyPlays(
+/**
+ * Guest plays that count against today's limit: the stored count, or 0 when
+ * the last play was on an earlier (local) day. Used both to check the limit and
+ * to compute the next count, so the two always agree on when a day starts.
+ */
+export function playsToday(
   current: number | undefined,
   lastPlayed: Date | undefined,
   now: Date
 ): number {
-  let plays = current ?? 0;
+  const plays = current ?? 0;
   if (lastPlayed) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const lastDay = new Date(
@@ -85,7 +89,16 @@ export function nextDailyPlays(
       lastPlayed.getMonth(),
       lastPlayed.getDate()
     );
-    if (lastDay.getTime() < today.getTime()) plays = 0;
+    if (lastDay.getTime() < today.getTime()) return 0;
   }
-  return plays + 1;
+  return plays;
+}
+
+/** Next guest play count: resets when the last play was on an earlier day. */
+export function nextDailyPlays(
+  current: number | undefined,
+  lastPlayed: Date | undefined,
+  now: Date
+): number {
+  return playsToday(current, lastPlayed, now) + 1;
 }
