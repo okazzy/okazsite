@@ -6,7 +6,7 @@
  *
  * Firestore is reached through a FirestoreReader (the REST reader in
  * firestoreRest.ts, or a fake in tests/watchMetadata.test.mjs). With no reader
- * (FIREBASE_SERVICE_ACCOUNT_JSON not set) or on any failure the result is {},
+ * (no Firebase web config) or on any failure the result is {},
  * which keeps the generic metadata from src/app/[locale]/layout.tsx.
  */
 import type { Metadata } from 'next';
