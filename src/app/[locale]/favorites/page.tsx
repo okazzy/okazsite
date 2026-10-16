@@ -9,6 +9,8 @@ import { getFavoriteTracks, getFavoriteVideos } from '@/lib/firebase/firestore';
 import { getLocalizedText } from '@/lib/models';
 import type { TrackModel, VideoModel } from '@/lib/models';
 import FavoriteButton from '@/components/ui/FavoriteButton';
+import PremiumVideoGate from '@/components/videos/PremiumVideoGate';
+import { isVideoLocked } from '@/lib/videoAccess';
 import './favorites.css';
 
 type TabType = 'audio' | 'video';
@@ -209,16 +211,21 @@ export default function FavoritesPage() {
             >
               ✕
             </button>
-            <div className="video-modal__player-wrapper">
-              <video
-                className="video-modal__player"
-                src={getLocalizedText(selectedVideo.videoUrl, locale)}
-                controls
-                autoPlay
-                playsInline
-                poster={getLocalizedText(selectedVideo.imageUrl, locale) || undefined}
-              />
-            </div>
+            {/* Player, or the exclusive-content panel for a premium video and a non-subscriber */}
+            {isVideoLocked(selectedVideo, userData) ? (
+              <PremiumVideoGate video={selectedVideo} locale={locale} />
+            ) : (
+              <div className="video-modal__player-wrapper">
+                <video
+                  className="video-modal__player"
+                  src={getLocalizedText(selectedVideo.videoUrl, locale)}
+                  controls
+                  autoPlay
+                  playsInline
+                  poster={getLocalizedText(selectedVideo.imageUrl, locale) || undefined}
+                />
+              </div>
+            )}
             <div className="video-modal__info">
               {(selectedVideo.isPractice || selectedVideo.isPremium) && (
                 <div className="video-modal__badges">

@@ -5,6 +5,8 @@ import { useTranslations } from 'next-intl';
 import type { VideoModel } from '@/lib/models';
 import { getLocalizedText } from '@/lib/models';
 import FavoriteButton from '@/components/ui/FavoriteButton';
+import PremiumVideoGate from '@/components/videos/PremiumVideoGate';
+import { isVideoLocked } from '@/lib/videoAccess';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface VideoListProps {
@@ -34,7 +36,7 @@ function setVideoParamInUrl(videoId: string | null) {
 
 export default function VideoList({ videos, locale, initialVideoId }: VideoListProps) {
   const t = useTranslations();
-  const { checkGuestLimit, isAuthenticated, loading: authLoading } = useAuth();
+  const { checkGuestLimit, isAuthenticated, loading: authLoading, userData } = useAuth();
   const [selectedVideo, setSelectedVideo] = useState<VideoModel | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   // The shared-link video id, taken once at mount and cleared once it opens (or
@@ -61,8 +63,9 @@ export default function VideoList({ videos, locale, initialVideoId }: VideoListP
   const playFromTap = useCallback((video: VideoModel) => {
     pendingVideoIdRef.current = null;
     waitingForSignInRef.current = false;
-    if (checkGuestLimit()) openVideo(video);
-  }, [checkGuestLimit, openVideo]);
+    // a locked premium video only shows the exclusive-content panel: no guest play is used
+    if (isVideoLocked(video, userData) || checkGuestLimit()) openVideo(video);
+  }, [checkGuestLimit, openVideo, userData]);
 
   // Open the video from a shared link once, when the videos and auth are ready.
   // Same guest limit as a tap; an unknown or hidden id just shows the list.
@@ -82,14 +85,14 @@ export default function VideoList({ videos, locale, initialVideoId }: VideoListP
     // Bring its card into view first (behind the modal or the paywall), so it
     // is there when the modal is closed.
     gridRef.current?.children[index]?.scrollIntoView({ block: 'center', behavior: 'instant' });
-    if (!checkGuestLimit()) {
+    if (!isVideoLocked(videos[index], userData) && !checkGuestLimit()) {
       waitingForSignInRef.current = true;
       return;
     }
 
     pendingVideoIdRef.current = null;
     setSelectedVideo(videos[index]);
-  }, [authLoading, isAuthenticated, videos, checkGuestLimit]);
+  }, [authLoading, isAuthenticated, videos, checkGuestLimit, userData]);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -216,16 +219,21 @@ export default function VideoList({ videos, locale, initialVideoId }: VideoListP
             </button>
 
             {/* Video Player */}
-            <div className="video-modal__player-wrapper">
-              <video
-                className="video-modal__player"
-                src={getLocalizedText(selectedVideo.videoUrl, locale)}
-                controls
-                autoPlay
-                playsInline
-                poster={getLocalizedText(selectedVideo.imageUrl, locale) || undefined}
-              />
-            </div>
+            {/* Player, or the exclusive-content panel for a premium video and a non-subscriber */}
+            {isVideoLocked(selectedVideo, userData) ? (
+              <PremiumVideoGate video={selectedVideo} locale={locale} />
+            ) : (
+              <div className="video-modal__player-wrapper">
+                <video
+                  className="video-modal__player"
+                  src={getLocalizedText(selectedVideo.videoUrl, locale)}
+                  controls
+                  autoPlay
+                  playsInline
+                  poster={getLocalizedText(selectedVideo.imageUrl, locale) || undefined}
+                />
+              </div>
+            )}
 
             {/* Video Info */}
             <div className="video-modal__info">
