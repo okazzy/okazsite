@@ -14,6 +14,8 @@ import {
 import { getLocalizedText } from '@/lib/models';
 import type { CategoryModel, TrackModel, VideoModel, QuoteModel } from '@/lib/models';
 import FavoriteButton from '@/components/ui/FavoriteButton';
+import PremiumVideoGate from '@/components/videos/PremiumVideoGate';
+import { isVideoLocked } from '@/lib/videoAccess';
 import './page.css';
 
 interface CategoryHighlight {
@@ -23,7 +25,7 @@ interface CategoryHighlight {
 
 export default function HomePage() {
   const t = useTranslations();
-  const { loading: authLoading, checkGuestLimit } = useAuth();
+  const { loading: authLoading, checkGuestLimit, userData } = useAuth();
   const locale = useLocale();
 
   const [quote, setQuote] = useState<QuoteModel | null>(null);
@@ -180,7 +182,7 @@ export default function HomePage() {
               <div
                 key={`vid-${i}`}
                 className={`video-card card-stagger-${Math.min(i + 1, 4)}`}
-                onClick={() => { if (checkGuestLimit()) setSelectedVideo(video); }}
+                onClick={() => { if (isVideoLocked(video, userData) || checkGuestLimit()) setSelectedVideo(video); }}
                 style={{ cursor: 'pointer' }}
                 role="button"
                 tabIndex={0}
@@ -348,16 +350,21 @@ export default function HomePage() {
             >
               ✕
             </button>
-            <div className="video-modal__player-wrapper">
-              <video
-                className="video-modal__player"
-                src={getLocalizedText(selectedVideo.videoUrl, locale)}
-                controls
-                autoPlay
-                playsInline
-                poster={getLocalizedText(selectedVideo.imageUrl, locale) || undefined}
-              />
-            </div>
+            {/* Player, or the exclusive-content panel for a premium video and a non-subscriber */}
+            {isVideoLocked(selectedVideo, userData) ? (
+              <PremiumVideoGate video={selectedVideo} locale={locale} />
+            ) : (
+              <div className="video-modal__player-wrapper">
+                <video
+                  className="video-modal__player"
+                  src={getLocalizedText(selectedVideo.videoUrl, locale)}
+                  controls
+                  autoPlay
+                  playsInline
+                  poster={getLocalizedText(selectedVideo.imageUrl, locale) || undefined}
+                />
+              </div>
+            )}
             <div className="video-modal__info">
               {(selectedVideo.isPractice || selectedVideo.isPremium) && (
                 <div className="video-modal__badges">
