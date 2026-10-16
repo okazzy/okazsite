@@ -14,6 +14,9 @@ import {
   isValidPathSegment,
   parseServiceAccount,
   resetAccessTokenCache,
+  resetGuestSessionCache,
+  API_KEY_ENV,
+  PROJECT_ID_ENV,
 } from '../src/lib/server/firestoreRest.ts';
 
 // Throwaway key generated for the test run (never a real credential).
@@ -47,7 +50,10 @@ function fakeFetch(routes) {
 const tokenRoute = (url) =>
   url === KEY.token_uri ? { body: { access_token: 'tok-1', expires_in: 3600, token_type: 'Bearer' } } : null;
 
-test.beforeEach(() => resetAccessTokenCache());
+test.beforeEach(() => {
+  resetAccessTokenCache();
+  resetGuestSessionCache();
+});
 
 test('decodeValue turns typed REST values into plain JS', () => {
   assert.equal(decodeValue({ stringValue: 'hi' }), 'hi');
@@ -125,9 +131,78 @@ test('JWT assertion: RS256 header, Google claims, valid signature', () => {
   assert.equal(ok, true);
 });
 
-test('no env var (or an unusable one) means no reader and no requests', () => {
+test('no Firebase config (and no usable key) means no reader and no requests', () => {
   assert.equal(createFirestoreReader({ env: {} }), null);
   assert.equal(createFirestoreReader({ env: { [SERVICE_ACCOUNT_ENV]: 'garbage' } }), null);
+  assert.equal(createFirestoreReader({ env: { [API_KEY_ENV]: 'k' } }), null, 'needs the project id too');
+});
+
+const GUEST_ENV = { [API_KEY_ENV]: 'public-web-key', [PROJECT_ID_ENV]: 'okaz-test-project', NEXT_PUBLIC_APP_URL: 'https://www.okaz.io' };
+const DOC = { name: 'projects/p/databases/(default)/documents/a/b', fields: { title: { stringValue: 'T' } } };
+
+test('guest: signs in anonymously once, reads with the ID token, and renews without a new user', async () => {
+  let now = 1_000_000;
+  let refreshes = 0;
+  const fetchImpl = fakeFetch((url, init) => {
+    if (url.startsWith('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=public-web-key')) {
+      assert.equal(init.method, 'POST');
+      assert.deepEqual(JSON.parse(init.body), { returnSecureToken: true });
+      assert.equal(init.headers.Referer, 'https://www.okaz.io/');
+      assert.equal(init.cache, 'no-store');
+      return { body: { idToken: 'id-1', refreshToken: 'r-1', expiresIn: '3600' } };
+    }
+    if (url.startsWith('https://securetoken.googleapis.com/v1/token?key=public-web-key')) {
+      refreshes++;
+      assert.match(init.body, /grant_type=refresh_token&refresh_token=r-1/);
+      return { body: { id_token: 'id-2', refresh_token: 'r-2', expires_in: '3600' } };
+    }
+    if (url.startsWith('https://firestore.googleapis.com/v1/projects/okaz-test-project/')) {
+      assert.match(init.headers.Authorization, /^Bearer id-[12]$/);
+      return { body: DOC };
+    }
+    return null;
+  });
+  const reader = createFirestoreReader({ env: GUEST_ENV, fetchImpl, now: () => now });
+  assert.equal((await reader.getDocument(['a', 'b'])).data.title, 'T');
+  assert.equal((await reader.getDocument(['a', 'b'])).data.title, 'T');
+  const signUps = () => fetchImpl.calls.filter((c) => c.url.includes('accounts:signUp')).length;
+  assert.equal(signUps(), 1, 'the cached ID token is reused');
+
+  now += 3600 * 1000; // token expired: renewed with the refresh token, no new anonymous user
+  await reader.getDocument(['a', 'b']);
+  assert.equal(signUps(), 1);
+  assert.equal(refreshes, 1);
+  assert.equal(fetchImpl.calls.at(-1).init.headers.Authorization, 'Bearer id-2');
+});
+
+test('guest: a failed renewal signs up again; a failed sign-up gives null', async () => {
+  let now = 0;
+  let signUpOk = true;
+  const fetchImpl = fakeFetch((url) => {
+    if (url.includes('accounts:signUp')) {
+      return signUpOk ? { body: { idToken: 'id-x', refreshToken: 'r-x', expiresIn: '3600' } } : { status: 400, body: {} };
+    }
+    if (url.includes('securetoken')) return { status: 400, body: {} };
+    if (url.includes('firestore')) return { body: DOC };
+    return null;
+  });
+  const reader = createFirestoreReader({ env: GUEST_ENV, fetchImpl, now: () => now });
+  assert.ok(await reader.getDocument(['a', 'b']));
+  now += 3600 * 1000;
+  assert.ok(await reader.getDocument(['a', 'b']), 'falls back to a new sign-up');
+  assert.equal(fetchImpl.calls.filter((c) => c.url.includes('accounts:signUp')).length, 2);
+
+  resetGuestSessionCache();
+  signUpOk = false;
+  assert.equal(await reader.getDocument(['a', 'b']), null);
+});
+
+test('a service account, when set, is used instead of the guest', async () => {
+  const fetchImpl = fakeFetch((url) => (url === KEY.token_uri ? tokenRoute(url) : url.includes('firestore') ? { body: DOC } : null));
+  const reader = createFirestoreReader({ env: { ...GUEST_ENV, ...ENV }, fetchImpl });
+  await reader.getDocument(['a', 'b']);
+  assert.equal(fetchImpl.calls.some((c) => c.url.includes('identitytoolkit')), false);
+  assert.match(fetchImpl.calls.at(-1).url, /projects\/test-project\//);
 });
 
 test('getDocument: token exchange, authorized GET with 1h revalidate, decoded result, token reused', async () => {

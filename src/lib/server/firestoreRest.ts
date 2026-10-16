@@ -1,11 +1,14 @@
 /**
  * Read-only Firestore access for the server (link previews), via the REST API.
  *
- * SERVER ONLY: never import this from a 'use client' file. It reads the
- * service account key from the FIREBASE_SERVICE_ACCOUNT_JSON environment
- * variable (a read-only "Cloud Datastore Viewer" account), signs a JWT with
- * node:crypto, trades it for an OAuth access token and reads documents with
- * plain fetch, so the Firebase SDKs are not involved.
+ * SERVER ONLY: never import this from a 'use client' file. Two ways in:
+ * - Guest (default, no secret): signs in anonymously with the site's public
+ *   Firebase web config (NEXT_PUBLIC_FIREBASE_API_KEY / _PROJECT_ID), like
+ *   every visitor does, and reads with that ID token, so the Firestore
+ *   security rules apply: it can read only what any visitor can.
+ * - Service account (only if FIREBASE_SERVICE_ACCOUNT_JSON is ever set): signs
+ *   a JWT with node:crypto and trades it for an OAuth access token.
+ * Documents are read with plain fetch, so the Firebase SDKs are not involved.
  *
  * Every failure (no env var, bad key, timeout, HTTP error, bad JSON) returns
  * null: callers fall back to the generic site metadata.
@@ -19,6 +22,10 @@ export const SERVICE_ACCOUNT_ENV = 'FIREBASE_SERVICE_ACCOUNT_JSON';
 export const FIRESTORE_SCOPE = 'https://www.googleapis.com/auth/datastore';
 const DEFAULT_TOKEN_URI = 'https://oauth2.googleapis.com/token';
 const FIRESTORE_API = 'https://firestore.googleapis.com/v1';
+export const API_KEY_ENV = 'NEXT_PUBLIC_FIREBASE_API_KEY';
+export const PROJECT_ID_ENV = 'NEXT_PUBLIC_FIREBASE_PROJECT_ID';
+const SIGN_UP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp';
+const REFRESH_URL = 'https://securetoken.googleapis.com/v1/token';
 
 /** Per-request timeout. */
 export const REQUEST_TIMEOUT_MS = 3000;
@@ -178,6 +185,90 @@ export async function getAccessToken(
 }
 
 /* ------------------------------------------------------------------ */
+/*  Guest (anonymous) ID token                                         */
+/* ------------------------------------------------------------------ */
+
+let guestSession: { owner: string; idToken: string; refreshToken: string; expiresAt: number } | null = null;
+let pendingGuest: { owner: string; promise: Promise<string | null> } | null = null;
+
+/** Forget the cached guest session (tests only). */
+export function resetGuestSessionCache(): void {
+  guestSession = null;
+  pendingGuest = null;
+}
+
+/**
+ * A Firebase ID token of an anonymous user, cached in memory: renewed with its
+ * refresh token (no new user) and only signed up again when that fails, so one
+ * server instance creates one anonymous user. `referer` is sent because the
+ * public web API key may be limited to the site's own pages.
+ */
+export async function getGuestIdToken(
+  apiKey: string,
+  referer: string,
+  fetchImpl: FetchLike = fetch,
+  now: () => number = Date.now
+): Promise<string | null> {
+  const owner = apiKey;
+  if (guestSession && guestSession.owner === owner && now() < guestSession.expiresAt - TOKEN_REFRESH_MARGIN_MS) {
+    return guestSession.idToken;
+  }
+  if (pendingGuest && pendingGuest.owner === owner) return pendingGuest.promise;
+
+  const post = (url: string, body: string, type: string) =>
+    fetchImpl(`${url}?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': type, Referer: referer },
+      body,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+
+  const promise = (async () => {
+    try {
+      // 1. renew the existing guest, so no new user is created
+      if (guestSession && guestSession.owner === owner) {
+        const res = await post(
+          REFRESH_URL,
+          new URLSearchParams({ grant_type: 'refresh_token', refresh_token: guestSession.refreshToken }).toString(),
+          'application/x-www-form-urlencoded'
+        );
+        if (res.ok) {
+          const b = (await res.json()) as { id_token?: unknown; refresh_token?: unknown; expires_in?: unknown };
+          if (typeof b.id_token === 'string' && b.id_token) {
+            guestSession = {
+              owner,
+              idToken: b.id_token,
+              refreshToken: typeof b.refresh_token === 'string' && b.refresh_token ? b.refresh_token : guestSession.refreshToken,
+              expiresAt: now() + (Number(b.expires_in) > 0 ? Number(b.expires_in) : 3600) * 1000,
+            };
+            return guestSession.idToken;
+          }
+        }
+      }
+      // 2. sign up a new anonymous user
+      const res = await post(SIGN_UP_URL, JSON.stringify({ returnSecureToken: true }), 'application/json');
+      if (!res.ok) return null;
+      const b = (await res.json()) as { idToken?: unknown; refreshToken?: unknown; expiresIn?: unknown };
+      if (typeof b.idToken !== 'string' || !b.idToken || typeof b.refreshToken !== 'string') return null;
+      guestSession = {
+        owner,
+        idToken: b.idToken,
+        refreshToken: b.refreshToken,
+        expiresAt: now() + (Number(b.expiresIn) > 0 ? Number(b.expiresIn) : 3600) * 1000,
+      };
+      return guestSession.idToken;
+    } catch {
+      return null;
+    } finally {
+      pendingGuest = null;
+    }
+  })();
+  pendingGuest = { owner, promise };
+  return promise;
+}
+
+/* ------------------------------------------------------------------ */
 /*  REST value decoding                                               */
 /* ------------------------------------------------------------------ */
 
@@ -247,17 +338,27 @@ function documentsUrl(projectId: string, segments: string[]): string {
   return `${FIRESTORE_API}/projects/${encodeURIComponent(projectId)}/databases/(default)/documents${path ? `/${path}` : ''}`;
 }
 
-/** A FirestoreReader backed by the REST API, or null when FIREBASE_SERVICE_ACCOUNT_JSON is missing or unusable. */
+/**
+ * A FirestoreReader backed by the REST API: with the service account when
+ * FIREBASE_SERVICE_ACCOUNT_JSON is set, else as an anonymous guest with the
+ * public web config; null when neither is available.
+ */
 export function createFirestoreReader(options: ReaderOptions = {}): FirestoreReader | null {
   const env = options.env ?? process.env;
-  const sa = parseServiceAccount(env[SERVICE_ACCOUNT_ENV]);
-  if (!sa) return null;
   const fetchImpl: FetchLike = options.fetchImpl ?? fetch;
   const now = options.now ?? Date.now;
+  const sa = parseServiceAccount(env[SERVICE_ACCOUNT_ENV]);
+  const apiKey = env[API_KEY_ENV]?.trim();
+  const projectId = sa?.project_id ?? env[PROJECT_ID_ENV]?.trim();
+  if (!projectId || (!sa && !apiKey)) return null;
+  const referer = `${(env.NEXT_PUBLIC_APP_URL || 'https://www.okaz.io').replace(/\/$/, '')}/`;
+  const getToken = sa
+    ? () => getAccessToken(sa, fetchImpl, now)
+    : () => getGuestIdToken(apiKey!, referer, fetchImpl, now);
 
   async function request(url: string, init: FetchInit): Promise<unknown | null> {
     try {
-      const token = await getAccessToken(sa!, fetchImpl, now);
+      const token = await getToken();
       if (!token) return null;
       const res = await fetchImpl(url, {
         ...init,
@@ -275,7 +376,7 @@ export function createFirestoreReader(options: ReaderOptions = {}): FirestoreRea
   return {
     async getDocument(segments) {
       if (segments.length === 0 || segments.length % 2 !== 0 || !segments.every(isValidPathSegment)) return null;
-      return decodeDocument(await request(documentsUrl(sa.project_id, segments), { method: 'GET' }));
+      return decodeDocument(await request(documentsUrl(projectId, segments), { method: 'GET' }));
     },
 
     async findOneByField(parentSegments, collectionId, field, value) {
@@ -287,7 +388,7 @@ export function createFirestoreReader(options: ReaderOptions = {}): FirestoreRea
       ) {
         return null;
       }
-      const body = await request(`${documentsUrl(sa.project_id, parentSegments)}:runQuery`, {
+      const body = await request(`${documentsUrl(projectId, parentSegments)}:runQuery`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

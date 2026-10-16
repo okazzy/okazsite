@@ -9,9 +9,9 @@ type Props = {
 };
 
 /**
- * Link preview for a shared video (?v=) or the subcategory. Reads Firestore on
- * the server only when FIREBASE_SERVICE_ACCOUNT_JSON is set; otherwise (or on
- * any failure) returns {} and the generic layout metadata is used.
+ * Link preview for a shared video (?v=) or the subcategory, read from Firestore
+ * on the server as an anonymous guest (see firestoreRest.ts). On any failure it
+ * returns {} and the generic layout metadata is used.
  */
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   // Not wrapped in try/catch: awaiting params/searchParams is how Next.js
